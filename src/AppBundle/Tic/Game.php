@@ -114,7 +114,6 @@ class Game
         $this->currentPlayer = $currentPlayer;
     }
 
-
     public function serialize()
     {
         $res = array(

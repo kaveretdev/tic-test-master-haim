@@ -1,8 +1,11 @@
 {% extends 'AppBundle::layout.html.twig' %}
-{% block body %}
+{% block content %}
 
+    <section style="display: flex; justify-content: space-between">
+        <a href="/change-player-mode/1">1 player</a>
+        <a href="/change-player-mode/2">2 players</a>
+    </section>
     {% include 'AppBundle:Board:board.html.twig' with grid %}
     {% include 'AppBundle:Board:currentPlayer.html.twig' with grid %}
-    {% include 'AppBundle:Board:controls.html.twig' %}
 
-{% endblock body %}
+{% endblock content %}

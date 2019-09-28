@@ -74,4 +74,19 @@ class GameModel
         $this->game->start();
         $this->storeGame();
     }
+
+    /**
+     * Change player : pc or human , default is pc.
+     * @param $mode
+     */
+    public function changePlayerMode($mode)
+    {
+        $this->session->set('playerMode', $mode);
+    }
+
+    public function getPlayerMode()
+    {
+        return $this->session->get('playerMode', 1);
+    }
+
 }

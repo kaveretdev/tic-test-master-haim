@@ -13,3 +13,6 @@ play:
 end:
     path: /end
     defaults: { _controller: "AppBundle:Default:end" }
+mode:
+    path: /change-player-mode/{mode}
+    defaults: { _controller: "AppBundle:Default:changePlayerMode" }

@@ -95,6 +95,54 @@ class Board
         return $res;
     }
 
+    /**
+     * @return array of winning squares positions to be highlighted by css
+     */
+    public function getWinningGrid()
+    {
+        $winningGrid = array();
+
+        for($i = 0; $i < 3; $i++) {
+            if($this->isRowWon($i)){
+                $winningGrid = array(
+                    array($i,0),
+                    array($i,1),
+                    array($i,2),
+                );
+            }
+            elseif ($this->isColWon($i)){
+                $winningGrid = array(
+                    array(0,$i),
+                    array(1,$i),
+                    array(2,$i),
+                );
+
+
+            }
+            if(!empty($winningGrid)) break;
+        }
+
+
+
+        if($this->isMainDiagonWon()){
+            $winningGrid = array(
+                array(0,0),
+                array(1,1),
+                array(2,2),
+            );
+        }
+
+        if($this->isSecondDiagonWon()){
+            $winningGrid = array(
+                array(0,2),
+                array(1,1),
+                array(2,0),
+            );
+        }
+
+        return $winningGrid;
+    }
+
     public function isRowWon($row)
     {
         $square = $this->getSquare($row, 0);
@@ -139,15 +187,18 @@ class Board
 
     public function isSecondDiagonWon()
     {
-        $square = $this->getSquare(0, 2);
+        $square = $this->getSquare(2,0);
+
         if(self::NOTHING == $square) {
             return false;
         }
-        for($i = 1; $i >= 0; $i--) {
-            if($square != $this->getSquare($i, $i)) {
+        for($i = 1,$d = 1; $i >= 0; $i--,$d++) {
+            if($square != $this->getSquare($i, $d)) {
                 return false;
             }
         }
+
+
         return true;
     }
 

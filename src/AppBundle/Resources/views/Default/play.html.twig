@@ -1,6 +1,5 @@
 {% extends 'AppBundle::layout.html.twig' %}
-{% block body %}
-
+{% block content %}
     <div class="messages">
         {% for msg in messages %}
             <div class="message">{{ msg }}</div>
@@ -9,6 +8,5 @@
 
     {% include 'AppBundle:Board:board.html.twig' with grid %}
     {% include 'AppBundle:Board:currentPlayer.html.twig' with grid %}
-    {% include 'AppBundle:Board:controls.html.twig' %}
-
-{% endblock body %}
+    <a href="/start" style="text-align: center">reset</a>
+{% endblock content %}
