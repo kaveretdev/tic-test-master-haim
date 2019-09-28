@@ -1,0 +1,8 @@
+{% extends 'AppBundle::layout.html.twig' %}
+{% block body %}
+
+    {% include 'AppBundle:Board:board.html.twig' with grid %}
+    {% include 'AppBundle:Board:currentPlayer.html.twig' with grid %}
+    {% include 'AppBundle:Board:controls.html.twig' %}
+
+{% endblock body %}

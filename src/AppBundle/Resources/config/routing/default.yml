@@ -1,0 +1,15 @@
+default:
+    path: /
+    defaults: { _controller: "AppBundle:Default:index" }
+
+start:
+    path: /start
+    defaults: { _controller: "AppBundle:Default:start" }
+
+play:
+    path: /play/{row}-{col}
+    defaults: { _controller: "AppBundle:Default:play" }
+
+end:
+    path: /end
+    defaults: { _controller: "AppBundle:Default:end" }

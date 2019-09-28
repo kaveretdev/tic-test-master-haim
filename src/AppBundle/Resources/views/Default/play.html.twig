@@ -1,0 +1,14 @@
+{% extends 'AppBundle::layout.html.twig' %}
+{% block body %}
+
+    <div class="messages">
+        {% for msg in messages %}
+            <div class="message">{{ msg }}</div>
+        {% endfor %}
+    </div>
+
+    {% include 'AppBundle:Board:board.html.twig' with grid %}
+    {% include 'AppBundle:Board:currentPlayer.html.twig' with grid %}
+    {% include 'AppBundle:Board:controls.html.twig' %}
+
+{% endblock body %}
