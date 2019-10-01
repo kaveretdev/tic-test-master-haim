@@ -15,8 +15,10 @@ class DefaultController extends Controller
 
     public function startAction()
     {
-        $this->get('app.model.game')->startGame();
-        $game = $this->get('app.model.game')->getGame();
+        $gameModel = $this->get('app.model.game');
+        $gameModel->startGame();
+        $game = $gameModel->getGame();
+        $score = $gameModel->getScore();
 
         return $this->render(
             'AppBundle:Default:start.html.twig', array(
@@ -24,14 +26,17 @@ class DefaultController extends Controller
             'currentPlayer' => $game->getCurrentPlayer(),
             'gameState' => $game->getState(),
             'winningGrid' => array(),
-
+            'score' => $score,
+            'playerMode' => $gameModel->getPlayerMode(),
         ));
     }
 
     public function playAction($row, $col)
     {
         $messages = array();
-        $game = $this->get('app.model.game')->getGame();
+        $gameModel = $this->get('app.model.game');
+        $game = $gameModel->getGame();
+        $score = $gameModel->getScore();
         if(!$this->isGameOver($game))
         {
             if(!$game->isMoveLegal($row, $col)) {
@@ -76,16 +81,23 @@ class DefaultController extends Controller
             'currentPlayer' => $game->getCurrentPlayer(),
             'gameState' => $game->getState(),
             'winningGrid' => array(),
+            'score' => $score,
+            'playerMode' => $gameModel->getPlayerMode(),
         ));
     }
 
     public function endAction()
     {
         $message = '';
-        $game = $this->get('app.model.game')->getGame();
+        $gameModel = $this->get('app.model.game');
+        $game = $gameModel->getGame();
         $gameState = $game->getState();
         $grid = $game->getBoard()->getGrid();
         $winningGrid = false;
+        $game->updateScore($gameModel);
+        $score = $gameModel->getScore();
+
+
         if(Game::STATE_TIE == $gameState) {
             $message = 'Game Over: tie! how boring!';
         } else {
@@ -99,7 +111,9 @@ class DefaultController extends Controller
             'message' => $message,
             'grid' => $grid,
             'gameState' => $gameState,
-            'winningGrid' => $winningGrid
+            'winningGrid' => $winningGrid,
+            'score' => $score,
+            'playerMode' => $gameModel->getPlayerMode(),
         ));
     }
 

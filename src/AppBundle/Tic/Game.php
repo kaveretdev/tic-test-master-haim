@@ -132,4 +132,26 @@ class Game
         $this->currentPlayer = $data['currentPlayer'];
     }
 
+    /**
+     * Score update logic
+     * @param $gameModel
+     */
+    public function updateScore($gameModel)
+    {
+        // if the score did not raise already
+        if(!$gameModel->didScoreRaise()){
+            $gameState = $this->getState();
+
+            // check the game state : if its a tie raise both scores
+            if($gameState === Game::STATE_TIE)
+            {
+                $gameModel->raiseScore('x');
+                $gameModel->raiseScore('o');
+            }
+            // else raise the winner's score which is the opposite of the current player
+            else{
+                $gameModel->raiseScore($this->currentPlayer==='o'?'x':'o');
+            }
+        }
+    }
 }

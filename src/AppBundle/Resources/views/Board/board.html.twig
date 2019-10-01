@@ -1,7 +1,19 @@
 <div class="board">
-    <div class="boardScore">
-
-    </div>
+    {% if score is defined %}
+        <div style="margin-bottom: 10px">
+            <span style="text-align: center;display: block;">Score:</span>
+            <div class="boardScore" style="display: flex; justify-content: space-around; align-items: center;">
+                {% if playerMode == "1" %}
+                    <span class="iconify" data-icon="raphael:pc" data-inline="false" style="font-size: 1.5em;"></span>
+                {% else %}
+                    <span class="iconify" data-icon="fa-solid:user" data-inline="false" style="font-size: 1.5em;"></span>
+                {% endif %}
+                <span>O <br>{{ score['o'] }}</span>
+                <span>x <br>{{ score['x'] }}</span>
+                <span class="iconify" data-icon="fa-solid:user" data-inline="false" style="font-size: 1.5em;"></span>
+            </div>
+        </div>
+    {% endif %}
     <table border>
         {% for row in grid %}
             <tr>
@@ -19,4 +31,8 @@
             </tr>
         {% endfor %}
     </table>
+    <section style="display: flex; justify-content: space-between">
+        <a href="/change-player-mode/1">1 player</a>
+        <a href="/change-player-mode/2">2 players</a>
+    </section>
 </div>
