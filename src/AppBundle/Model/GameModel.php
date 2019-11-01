@@ -72,6 +72,7 @@ class GameModel
     public function startGame()
     {
         $this->game->start();
+        $this->session->set('scoreRaised', 0);
         $this->storeGame();
     }
 
@@ -87,6 +88,39 @@ class GameModel
     public function getPlayerMode()
     {
         return $this->session->get('playerMode', 1);
+    }
+
+    public function raiseScore($shape)
+    {
+        $oldScore = $this->session->get('score', $this->getEmptyScore());
+        $oldScore[$this->getPlayerMode() === '1'?'pc':'human'][$shape]++;
+        $this->session->set('score', $oldScore);
+        $this->session->set('scoreRaised', 1);
+    }
+
+    /**
+     * Check if score was raised to prevent from score to raise each page reload
+     */
+    public function didScoreRaise()
+    {
+        return $this->session->get('scoreRaised',0);
+    }
+
+    /**
+     * Get the score array depending on player mode (human vs pc or 2 players)
+     */
+    public function getScore()
+    {
+        $score = $this->session->get('score', $this->getEmptyScore());
+        return $score[$this->getPlayerMode() === '1'?'pc':'human'];
+    }
+
+    /**
+     * Get a clean score array in case there is none saved in session
+     */
+    public function getEmptyScore()
+    {
+        return array('pc'=> array('x'=>0,'o'=>0),'human'=> array('x'=>0,'o'=>0));
     }
 
 }

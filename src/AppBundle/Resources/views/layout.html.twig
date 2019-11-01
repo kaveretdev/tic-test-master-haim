@@ -1,7 +1,31 @@
 {% extends '::base.html.twig' %}
+{% block stylesheets %}
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}" />
+    <link href="https://fonts.googleapis.com/css?family=Indie+Flower&display=swap" rel="stylesheet">
+    <style>
+        body{
+            font-family: 'Indie Flower', cursive;
+            font-size: 1.2em;
+        }
+        .board table{
+            font-size: 2em;
+            border-collapse: collapse;
+            border-style: hidden;
+        }
+        .board table td center{
+            height: 11%;
+        }
+        .board table td {
+            border: 5px solid black;
+        }
+    </style>
+{% endblock stylesheets %}
 {% block body %}
     <div style="display: grid; justify-content: center; align-content: center;grid-gap:30px;height: 90vh">
         {% block content %}
         {% endblock content %}
     </div>
 {% endblock body %}
+{% block javascripts %}
+    <script src="https://code.iconify.design/1/1.0.3/iconify.min.js"></script>
+{% endblock javascripts %}
