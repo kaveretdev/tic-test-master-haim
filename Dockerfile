@@ -32,10 +32,10 @@ RUN addgroup -g 1000 symfony && adduser -G symfony -u 1000 -D symfony
 # Copy application files
 COPY . .
 
-# Ensure var/cache and var/log directories exist with correct permissions
-RUN mkdir -p app/cache app/logs \
-    && chown -R symfony:symfony /var/www/html \
-    && chmod -R 775 /var/www/html
+# Ensure cache and log directories exist with correct permissions
+RUN mkdir -p app/cache/prod app/cache/dev app/logs \
+    && chmod -R 777 app/cache app/logs \
+    && chown -R symfony:symfony /var/www/html
 
 # Create directories for nginx and logs
 RUN mkdir -p /run/nginx /var/log/nginx \
@@ -57,9 +57,13 @@ RUN php app/console cache:clear --env=prod --no-debug
 # Switch back to root user for supervisor and nginx
 USER root
 
+# Fix permissions again after cache:clear
+RUN chmod -R 777 app/cache app/logs \
+    && chown -R www-data:www-data app/cache app/logs
+
 # Create NGINX configuration
 RUN echo " \
-user nginx; \
+user www-data; \
 worker_processes auto; \
 pid /run/nginx/nginx.pid; \
 error_log /var/log/nginx/error.log warn; \
@@ -99,6 +103,10 @@ http { \
     } \
 }" > /etc/nginx/nginx.conf
 
+# Create directories for nginx to write logs
+RUN mkdir -p /var/log/nginx \
+    && chown -R www-data:www-data /var/log/nginx /run/nginx
+
 # Create single supervisord.conf file with proper content
 RUN echo "[supervisord]" > /etc/supervisord.conf && \
     echo "nodaemon=true" >> /etc/supervisord.conf && \
@@ -116,6 +124,11 @@ RUN echo "[supervisord]" > /etc/supervisord.conf && \
     echo "autorestart=true" >> /etc/supervisord.conf && \
     echo "stderr_logfile=/var/log/nginx.err.log" >> /etc/supervisord.conf && \
     echo "stdout_logfile=/var/log/nginx.out.log" >> /etc/supervisord.conf
+
+# Configure PHP-FPM to run as www-data
+RUN echo "[global]" > /usr/local/etc/php-fpm.d/zzz-docker.conf && \
+    echo "user = www-data" >> /usr/local/etc/php-fpm.d/zzz-docker.conf && \
+    echo "group = www-data" >> /usr/local/etc/php-fpm.d/zzz-docker.conf
 
 # Expose port 80
 EXPOSE 80
