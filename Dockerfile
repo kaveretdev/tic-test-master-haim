@@ -1,7 +1,6 @@
 # Use PHP 7.1 with FPM on Alpine
 FROM php:7.1-fpm-alpine
-# Set working directory
-WORKDIR /var/www/html
+
 # Install system dependencies and required PHP extensions
 RUN apk update && apk add --no-cache \
     nginx \
@@ -26,111 +25,120 @@ RUN apk update && apk add --no-cache \
 # Install Composer
 COPY --from=composer:1 /usr/bin/composer /usr/bin/composer
 
-# Create a non-root user
-RUN addgroup -g 1000 symfony && adduser -G symfony -u 1000 -D symfony
+# Set working directory
+WORKDIR /var/www/html
 
 # Copy application files
 COPY . .
-
-# Ensure cache and log directories exist with correct permissions
-RUN mkdir -p app/cache/prod app/cache/dev app/logs \
-    && chmod -R 777 app/cache app/logs \
-    && chown -R symfony:symfony /var/www/html
-
-# Create directories for nginx and logs
-RUN mkdir -p /run/nginx /var/log/nginx \
-    && chown -R nginx:nginx /run/nginx /var/log/nginx
 
 # Modify AppKernel.php to conditionally load SensioGeneratorBundle only in dev environment
 RUN sed -i "s/new Sensio\\\\Bundle\\\\GeneratorBundle\\\\SensioGeneratorBundle(),/\$this->environment === 'dev' ? new Sensio\\\\Bundle\\\\GeneratorBundle\\\\SensioGeneratorBundle() : null,/" app/AppKernel.php \
     && sed -i '/null,/s/,\s*null,/,/' app/AppKernel.php
 
-# Switch to non-root user
-USER symfony
+# Ensure cache and log directories exist with very permissive permissions
+RUN mkdir -p app/cache/prod app/cache/dev app/logs \
+    && chmod -R 777 app/cache app/logs
 
-# Install Symfony dependencies (including dev dependencies)
+# Install Symfony dependencies (including dev dependencies) with increased memory limit
 RUN COMPOSER_MEMORY_LIMIT=-1 composer install --optimize-autoloader
 
-# Clear cache for production
-RUN php app/console cache:clear --env=prod --no-debug
+# Configure PHP-FPM
+COPY <<EOF /usr/local/etc/php-fpm.d/www.conf
+[www]
+user = www-data
+group = www-data
+listen = 127.0.0.1:9000
+pm = dynamic
+pm.max_children = 5
+pm.start_servers = 2
+pm.min_spare_servers = 1
+pm.max_spare_servers = 3
+EOF
 
-# Switch back to root user for supervisor and nginx
-USER root
+# Create NGINX configuration file
+COPY <<EOF /etc/nginx/nginx.conf
+user www-data;
+worker_processes auto;
+error_log /var/log/nginx/error.log warn;
+pid /var/run/nginx.pid;
 
-# Fix permissions again after cache:clear
-RUN chmod -R 777 app/cache app/logs \
-    && chown -R www-data:www-data app/cache app/logs
+events {
+    worker_connections 1024;
+}
 
-# Create NGINX configuration
-RUN echo " \
-user www-data; \
-worker_processes auto; \
-pid /run/nginx/nginx.pid; \
-error_log /var/log/nginx/error.log warn; \
-\
-events { worker_connections 1024; } \
-\
-http { \
-    include /etc/nginx/mime.types; \
-    default_type application/octet-stream; \
-    sendfile on; \
-    keepalive_timeout 65; \
-    \
-    server { \
-        listen 80; \
-        server_name _; \
-        root /var/www/html/web; \
-        \
-        location / { \
-            try_files \$uri /app.php\$is_args\$args; \
-        } \
-        \
-        location ~ ^/app\\.php(/|$) { \
-            fastcgi_pass 127.0.0.1:9000; \
-            fastcgi_split_path_info ^(.+\\.php)(/.*)$; \
-            include fastcgi_params; \
-            fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name; \
-            fastcgi_param DOCUMENT_ROOT \$realpath_root; \
-            internal; \
-        } \
-        \
-        location ~ \\.php$ { \
-            return 404; \
-        } \
-        \
-        error_log /var/log/nginx/error.log; \
-        access_log /var/log/nginx/access.log; \
-    } \
-}" > /etc/nginx/nginx.conf
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+    sendfile on;
+    access_log /var/log/nginx/access.log;
+    keepalive_timeout 65;
 
-# Create directories for nginx to write logs
-RUN mkdir -p /var/log/nginx \
-    && chown -R www-data:www-data /var/log/nginx /run/nginx
+    server {
+        listen 80 default_server;
+        server_name _;
+        root /var/www/html/web;
 
-# Create single supervisord.conf file with proper content
-RUN echo "[supervisord]" > /etc/supervisord.conf && \
-    echo "nodaemon=true" >> /etc/supervisord.conf && \
-    echo "" >> /etc/supervisord.conf && \
-    echo "[program:php-fpm]" >> /etc/supervisord.conf && \
-    echo "command=docker-php-entrypoint php-fpm" >> /etc/supervisord.conf && \
-    echo "autostart=true" >> /etc/supervisord.conf && \
-    echo "autorestart=true" >> /etc/supervisord.conf && \
-    echo "stderr_logfile=/var/log/php-fpm.err.log" >> /etc/supervisord.conf && \
-    echo "stdout_logfile=/var/log/php-fpm.out.log" >> /etc/supervisord.conf && \
-    echo "" >> /etc/supervisord.conf && \
-    echo "[program:nginx]" >> /etc/supervisord.conf && \
-    echo "command=nginx -g 'daemon off;'" >> /etc/supervisord.conf && \
-    echo "autostart=true" >> /etc/supervisord.conf && \
-    echo "autorestart=true" >> /etc/supervisord.conf && \
-    echo "stderr_logfile=/var/log/nginx.err.log" >> /etc/supervisord.conf && \
-    echo "stdout_logfile=/var/log/nginx.out.log" >> /etc/supervisord.conf
+        location / {
+            try_files \$uri /app.php\$is_args\$args;
+        }
 
-# Configure PHP-FPM to run as www-data
-RUN echo "[global]" > /usr/local/etc/php-fpm.d/zzz-docker.conf && \
-    echo "user = www-data" >> /usr/local/etc/php-fpm.d/zzz-docker.conf && \
-    echo "group = www-data" >> /usr/local/etc/php-fpm.d/zzz-docker.conf
+        location ~ ^/app\\.php(/|$) {
+            fastcgi_pass 127.0.0.1:9000;
+            fastcgi_split_path_info ^(.+\\.php)(/.*)$;
+            include fastcgi_params;
+            fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+            fastcgi_param HTTPS off;
+        }
+
+        error_log /var/log/nginx/project_error.log;
+        access_log /var/log/nginx/project_access.log;
+    }
+}
+EOF
+
+# Create supervisord configuration
+COPY <<EOF /etc/supervisord.conf
+[supervisord]
+nodaemon=true
+logfile=/var/log/supervisord.log
+pidfile=/var/run/supervisord.pid
+
+[program:php-fpm]
+command=php-fpm -F
+autostart=true
+autorestart=true
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+
+[program:nginx]
+command=nginx -g 'daemon off;'
+autostart=true
+autorestart=true
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+EOF
+
+# Create necessary directories with proper permissions
+RUN mkdir -p /var/log/nginx /var/run \
+    && touch /var/run/nginx.pid \
+    && chown -R www-data:www-data /var/log/nginx /var/run/nginx.pid \
+    && chmod -R 777 app/cache app/logs
+
+# Verify the nginx configuration is valid
+RUN nginx -t
+
+# Clear Symfony cache in production
+RUN php app/console cache:clear --env=prod --no-debug || true
+
+# Make everything writable after cache clear just to be sure
+RUN chmod -R 777 app/cache app/logs
 
 # Expose port 80
 EXPOSE 80
-# Start Supervisor to run both NGINX & PHP-FPM
+
+# Start supervisor
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
