@@ -37,6 +37,10 @@ RUN mkdir -p app/cache app/logs \
     && chown -R symfony:symfony /var/www/html \
     && chmod -R 775 /var/www/html
 
+# Create directories for nginx and logs
+RUN mkdir -p /run/nginx /var/log/nginx \
+    && chown -R nginx:nginx /run/nginx /var/log/nginx
+
 # Modify AppKernel.php to conditionally load SensioGeneratorBundle only in dev environment
 RUN sed -i "s/new Sensio\\\\Bundle\\\\GeneratorBundle\\\\SensioGeneratorBundle(),/\$this->environment === 'dev' ? new Sensio\\\\Bundle\\\\GeneratorBundle\\\\SensioGeneratorBundle() : null,/" app/AppKernel.php \
     && sed -i '/null,/s/,\s*null,/,/' app/AppKernel.php
@@ -55,26 +59,41 @@ USER root
 
 # Create NGINX configuration
 RUN echo " \
+user nginx; \
 worker_processes auto; \
+pid /run/nginx/nginx.pid; \
+error_log /var/log/nginx/error.log warn; \
+\
 events { worker_connections 1024; } \
+\
 http { \
     include /etc/nginx/mime.types; \
+    default_type application/octet-stream; \
     sendfile on; \
+    keepalive_timeout 65; \
+    \
     server { \
         listen 80; \
         server_name _; \
         root /var/www/html/web; \
+        \
         location / { \
             try_files \$uri /app.php\$is_args\$args; \
         } \
-        location ~ ^/app\.php(/|$) { \
+        \
+        location ~ ^/app\\.php(/|$) { \
             fastcgi_pass 127.0.0.1:9000; \
-            fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name; \
+            fastcgi_split_path_info ^(.+\\.php)(/.*)$; \
             include fastcgi_params; \
-            # Prevents URIs that include the front controller. This will 404:
-            # http://domain.tld/app.php/some-path
+            fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name; \
+            fastcgi_param DOCUMENT_ROOT \$realpath_root; \
             internal; \
         } \
+        \
+        location ~ \\.php$ { \
+            return 404; \
+        } \
+        \
         error_log /var/log/nginx/error.log; \
         access_log /var/log/nginx/access.log; \
     } \
